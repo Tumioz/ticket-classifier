@@ -1,0 +1,17 @@
+{
+  "saved_model": "improved",
+  "experiments": {
+    "baseline": {
+      "accuracy": 0.8769480519480519,
+      "macro_f1": 0.8768846181655345,
+      "weighted_f1": 0.8768846181655345,
+      "train_seconds": 2.02
+    },
+    "improved": {
+      "accuracy": 0.9152597402597402,
+      "macro_f1": 0.9154377900086046,
+      "weighted_f1": 0.9154377900086047,
+      "train_seconds": 27.42
+    }
+  }
+}

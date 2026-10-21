@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ticket Classifier</title>
+<style>
+  :root{--bg:#f6f7f9;--card:#fff;--text:#1d2330;--muted:#667085;--accent:#3b5bdb;--bar:#e6e9f0;--border:#dfe3ec;--err:#c92a2a}
+  @media (prefers-color-scheme:dark){:root{--bg:#14171f;--card:#1d212b;--text:#e8ebf2;--muted:#9aa3b8;--accent:#7c93f5;--bar:#2a3040;--border:#2f3647;--err:#ff6b6b}}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+  main{max-width:640px;margin:0 auto;padding:40px 20px}
+  h1{font-size:1.5rem;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 24px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+  textarea{width:100%;min-height:96px;resize:vertical;padding:12px;font:inherit;color:inherit;background:transparent;border:1px solid var(--border);border-radius:8px}
+  textarea:focus{outline:2px solid var(--accent);border-color:transparent}
+  button{font:inherit;cursor:pointer}
+  #go{margin-top:12px;padding:10px 20px;border:0;border-radius:8px;background:var(--accent);color:#fff;font-weight:600}
+  #go:disabled{opacity:.6;cursor:wait}
+  .chips{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px}
+  .chip{padding:6px 12px;border:1px solid var(--border);border-radius:999px;background:transparent;color:var(--muted);font-size:.85rem}
+  .chip:hover{color:var(--text);border-color:var(--accent)}
+  #result{margin-top:20px}
+  .row{margin:14px 0}
+  .meta{display:flex;justify-content:space-between;gap:12px}
+  .top .name{font-size:1.1rem;font-weight:700}
+  .bar{height:8px;border-radius:4px;background:var(--bar);overflow:hidden;margin-top:4px}
+  .bar>i{display:block;height:100%;background:var(--accent)}
+  .err{color:var(--err)}
+  footer{margin-top:20px;color:var(--muted);font-size:.8rem}
+</style>
+</head>
+<body>
+<main>
+  <h1>Ticket Classifier</h1>
+  <p class="sub">Paste a customer message and see which support intent it matches.</p>
+  <div class="card">
+    <textarea id="text" maxlength="2000" placeholder="e.g. My card still has not arrived"></textarea>
+    <button id="go">Classify</button>
+    <div class="chips" id="chips"></div>
+    <div id="result" aria-live="polite"></div>
+  </div>
+  <footer id="info"></footer>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
+const pretty = s => s.replace(/_/g, " ");
+const examples = ["My card still has not arrived", "I think someone stole my card", "What exchange rate do you use?", "Why was I charged a fee for this transfer?"];
+
+function message(text, cls) { $("result").replaceChildren(el("p", cls, text)); }
+
+function show(data) {
+  const box = $("result");
+  box.replaceChildren();
+  data.top_k.forEach((k, i) => {
+    const row = el("div", "row" + (i === 0 ? " top" : ""));
+    const meta = el("div", "meta");
+    meta.append(el("span", "name", pretty(k.label)), el("span", "", (k.confidence * 100).toFixed(1) + "%"));
+    const bar = el("div", "bar"), fill = document.createElement("i");
+    fill.style.width = (k.confidence * 100) + "%";
+    bar.append(fill);
+    row.append(meta, bar);
+    box.append(row);
+  });
+}
+
+async function classify() {
+  const text = $("text").value.trim();
+  if (!text) { message("Please type a message first.", "err"); return; }
+  $("go").disabled = true;
+  try {
+    const res = await fetch("/predict", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, top_k: 3 }) });
+    if (res.status === 503) throw new Error("No model is loaded yet. Train one first (see the README).");
+    if (!res.ok) throw new Error("Something went wrong. Please try again.");
+    show(await res.json());
+  } catch (e) {
+    message(e.message, "err");
+  } finally {
+    $("go").disabled = false;
+  }
+}
+
+examples.forEach(text => {
+  const chip = el("button", "chip", text);
+  chip.onclick = () => { $("text").value = text; classify(); };
+  $("chips").append(chip);
+});
+$("go").onclick = classify;
+$("text").addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) classify(); });
+
+fetch("/model-info").then(r => r.ok ? r.json() : null).then(info => {
+  if (!info) return;
+  const m = info.metadata.test_metrics, parts = [info.n_labels + " intents"];
+  if (info.metadata.model_name) parts.unshift("Model: " + info.metadata.model_name);
+  if (m) parts.push("test accuracy " + (m.accuracy * 100).toFixed(1) + "%");
+  $("info").textContent = parts.join(" · ");
+}).catch(() => {});
+</script>
+</body>
+</html>
