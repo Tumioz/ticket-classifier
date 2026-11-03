@@ -1,6 +1,6 @@
 # Ticket Classifier
 
-[![CI](https://github.com/YOUR_USERNAME/ticket-classifier/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/ticket-classifier/actions/workflows/ci.yml)
+[![CI](https://github.com/Tumioz/ticket-classifier/actions/workflows/ci.yml/badge.svg)](https://github.com/Tumioz/ticket-classifier/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)
 
 An end-to-end machine learning service that classifies customer-support queries into one of
